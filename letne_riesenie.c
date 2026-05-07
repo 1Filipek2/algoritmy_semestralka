@@ -9,231 +9,231 @@
 #define BUFFER_SIZE 256
 #define STRASSEN_CUTOFF 64
 
-int nacitajKladneCislo(const char *vyzva);
-double nacitajRealneCislo(const char *vyzva);
-char nacitajVolbuPokracovania(void);
-void nacitajRozmery(int *rowsA, int *colsA, int *colsB);
-double **alokujMaticu(int riadky, int stlpce);
-void freeMaticu(double **matica, int riadky);
-void nacitajMaticu(double **matica, int riadky, int stlpce, char nazov);
-void nasobenieMatic(double **A, double **B, double **C, int rowsA, int colsA, int colsB);
-void vypocitajSumyRiadkov(double **C, double *sumyRiadkov, int rowsA, int colsB);
-double najdiMaximalnuSumu(const double *sumyRiadkov, int rowsA);
-void vypisSumyRiadkov(const double *sumyRiadkov, int rowsA);
-void vypisNajvacsieRiadky(const double *sumyRiadkov, int rowsA, double maxSuma);
+int readPositiveInt(const char *prompt);
+double readDouble(const char *prompt);
+char readContinueChoice(void);
+void readDimensions(int *rowsA, int *colsA, int *colsB);
+double **allocMatrix(int rows, int cols);
+void freeMatrix(double **matrix, int rows);
+void readMatrix(double **matrix, int rows, int cols, char name);
+void multiplyMatrices(double **A, double **B, double **C, int rowsA, int colsA, int colsB);
+void computeRowSums(double **C, double *rowSums, int rowsA, int colsB);
+double findMaxSum(const double *rowSums, int rowsA);
+void printRowSums(const double *rowSums, int rowsA);
+void printMaxRows(const double *rowSums, int rowsA, double maxSum);
 
-// nove deklaracie po oprave
-int nacitajVolbuRezim(void);
-int nacitajVolbuMetody(void);
-void vypisMaticu(double **M, int riadky, int stlpce, char nazov);
-void generujMaticu(double **matica, int riadky, int stlpce, char nazov);
-void nasobenieMaticStrassen(double **A, double **B, double **C, int rowsA, int colsA, int colsB);
-void spustiTestovanie(void);
+// new declarations after refactor
+int readModeChoice(void);
+int readMethodChoice(void);
+void printMatrix(double **M, int rows, int cols, char name);
+void generateMatrix(double **matrix, int rows, int cols, char name);
+void multiplyMatricesStrassen(double **A, double **B, double **C, int rowsA, int colsA, int colsB);
+void runBenchmark(void);
 
-static void odstranKoniecRiadka(char *retazec) {
-    retazec[strcspn(retazec, "\n")] = '\0';
+static void stripNewline(char *str) {
+    str[strcspn(str, "\n")] = '\0';
 }
 
-static int obsahujeLenMedzery(const char *retazec) {
-    while (*retazec != '\0') {
-        if (!isspace((unsigned char)*retazec)) return 0;
-        retazec++;
+static int isBlank(const char *str) {
+    while (*str != '\0') {
+        if (!isspace((unsigned char)*str)) return 0;
+        str++;
     }
     return 1;
 }
 
-// nova
-static void vypocitajAVypis(double **A, double **B, int rowsA, int colsA, int colsB, int metoda) {
-    double **C = alokujMaticu(rowsA, colsB);
-    double *sumyRiadkov = (double *)malloc(rowsA * sizeof(double));
+// new
+static void computeAndPrint(double **A, double **B, int rowsA, int colsA, int colsB, int method) {
+    double **C = allocMatrix(rowsA, colsB);
+    double *rowSums = (double *)malloc(rowsA * sizeof(double));
 
-    if (sumyRiadkov == NULL) {
-        printf("chyba alokacie pamate!\n");
-        freeMaticu(C, rowsA);
+    if (rowSums == NULL) {
+        printf("memory allocation error!\n");
+        freeMatrix(C, rowsA);
         exit(1);
     }
 
-    if (metoda == 2)
-        nasobenieMaticStrassen(A, B, C, rowsA, colsA, colsB);
+    if (method == 2)
+        multiplyMatricesStrassen(A, B, C, rowsA, colsA, colsB);
     else
-        nasobenieMatic(A, B, C, rowsA, colsA, colsB);
+        multiplyMatrices(A, B, C, rowsA, colsA, colsB);
 
-    vypisMaticu(C, rowsA, colsB, 'C');
+    printMatrix(C, rowsA, colsB, 'C');
 
-    vypocitajSumyRiadkov(C, sumyRiadkov, rowsA, colsB);
-    printf("\nsucty riadkov vyslednej matice C:\n");
-    vypisSumyRiadkov(sumyRiadkov, rowsA);
+    computeRowSums(C, rowSums, rowsA, colsB);
+    printf("\nrow sums of result matrix C:\n");
+    printRowSums(rowSums, rowsA);
 
-    double maxSuma = najdiMaximalnuSumu(sumyRiadkov, rowsA);
-    vypisNajvacsieRiadky(sumyRiadkov, rowsA, maxSuma);
+    double maxSum = findMaxSum(rowSums, rowsA);
+    printMaxRows(rowSums, rowsA, maxSum);
 
-    free(sumyRiadkov);
-    freeMaticu(C, rowsA);
+    free(rowSums);
+    freeMatrix(C, rowsA);
 }
 
 int main(void) {
     srand((unsigned int)time(NULL));
 
-    char opakovat = 'a';
+    char repeat = 'y';
 
-    while (opakovat == 'a' || opakovat == 'A') {
-        int rezim = nacitajVolbuRezim();
+    while (repeat == 'y' || repeat == 'Y') {
+        int mode = readModeChoice();
 
-        if (rezim == 3) {
-            spustiTestovanie();
+        if (mode == 3) {
+            runBenchmark();
         } else {
             int rowsA, colsA, colsB;
-            nacitajRozmery(&rowsA, &colsA, &colsB);
+            readDimensions(&rowsA, &colsA, &colsB);
 
-            int metoda = nacitajVolbuMetody();
+            int method = readMethodChoice();
 
-            double **A = alokujMaticu(rowsA, colsA);
-            double **B = alokujMaticu(colsA, colsB);
+            double **A = allocMatrix(rowsA, colsA);
+            double **B = allocMatrix(colsA, colsB);
 
-            if (rezim == 2) {
-                generujMaticu(A, rowsA, colsA, 'A');
-                generujMaticu(B, colsA, colsB, 'B');
+            if (mode == 2) {
+                generateMatrix(A, rowsA, colsA, 'A');
+                generateMatrix(B, colsA, colsB, 'B');
             } else {
-                nacitajMaticu(A, rowsA, colsA, 'A');
-                nacitajMaticu(B, colsA, colsB, 'B');
+                readMatrix(A, rowsA, colsA, 'A');
+                readMatrix(B, colsA, colsB, 'B');
             }
 
-            vypocitajAVypis(A, B, rowsA, colsA, colsB, metoda);
+            computeAndPrint(A, B, rowsA, colsA, colsB, method);
 
-            freeMaticu(A, rowsA);
-            freeMaticu(B, colsA);
+            freeMatrix(A, rowsA);
+            freeMatrix(B, colsA);
         }
 
-        opakovat = nacitajVolbuPokracovania();
+        repeat = readContinueChoice();
     }
 
-    printf("program skoncil!\n");
+    printf("program finished!\n");
     return 0;
 }
 
-int nacitajKladneCislo(const char *vyzva) {
+int readPositiveInt(const char *prompt) {
     char buffer[BUFFER_SIZE];
     char *endptr;
-    long hodnota;
+    long value;
 
     while (1) {
-        printf("%s ", vyzva);
+        printf("%s ", prompt);
         fflush(stdout);
 
         if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
-            printf("chyba pri nacitani vstupu!\n");
+            printf("input read error!\n");
             exit(1);
         }
 
-        odstranKoniecRiadka(buffer);
+        stripNewline(buffer);
 
-        if (buffer[0] == '\0' || obsahujeLenMedzery(buffer)) {
-            printf("neplatny vstup, zadaj kladne cele cislo.\n");
+        if (buffer[0] == '\0' || isBlank(buffer)) {
+            printf("invalid input, enter a positive integer.\n");
             continue;
         }
 
-        hodnota = strtol(buffer, &endptr, 10);
+        value = strtol(buffer, &endptr, 10);
 
         while (isspace((unsigned char)*endptr)) endptr++;
 
-        if (*endptr != '\0' || hodnota <= 0) {
-            printf("neplatny vstup, zadaj kladne cele cislo.\n");
+        if (*endptr != '\0' || value <= 0) {
+            printf("invalid input, enter a positive integer.\n");
             continue;
         }
 
-        return (int)hodnota;
+        return (int)value;
     }
 }
 
-double nacitajRealneCislo(const char *vyzva) {
+double readDouble(const char *prompt) {
     char buffer[BUFFER_SIZE];
     char *endptr;
-    double hodnota;
+    double value;
 
     while (1) {
-        printf("%s", vyzva);
+        printf("%s", prompt);
         fflush(stdout);
 
         if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
-            printf("chyba pri nacitani vstupu!\n");
+            printf("input read error!\n");
             exit(1);
         }
 
-        odstranKoniecRiadka(buffer);
+        stripNewline(buffer);
 
-        if (buffer[0] == '\0' || obsahujeLenMedzery(buffer)) {
-            printf("neplatny vstup, zadaj realne cislo.\n");
+        if (buffer[0] == '\0' || isBlank(buffer)) {
+            printf("invalid input, enter a real number.\n");
             continue;
         }
 
-        hodnota = strtod(buffer, &endptr);
+        value = strtod(buffer, &endptr);
 
         while (isspace((unsigned char)*endptr)) endptr++;
 
         if (*endptr != '\0') {
-            printf("neplatny vstup, zadaj realne cislo.\n");
+            printf("invalid input, enter a real number.\n");
             continue;
         }
 
-        return hodnota;
+        return value;
     }
 }
 
-char nacitajVolbuPokracovania(void) {
+char readContinueChoice(void) {
     char buffer[BUFFER_SIZE];
 
     while (1) {
-        printf("\nchces pokracovat odznova? (a/n): ");
+        printf("\ndo you want to continue? (y/n): ");
         fflush(stdout);
 
         if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
-            printf("chyba pri nacitani vstupu!\n");
+            printf("input read error!\n");
             exit(1);
         }
 
-        odstranKoniecRiadka(buffer);
+        stripNewline(buffer);
 
-        if (buffer[0] == 'a' || buffer[0] == 'A' || buffer[0] == 'n' || buffer[0] == 'N')
+        if (buffer[0] == 'y' || buffer[0] == 'Y' || buffer[0] == 'n' || buffer[0] == 'N')
             return buffer[0];
 
-        printf("neplatna volba, zadaj 'a' alebo 'n'.\n");
+        printf("invalid choice, enter 'y' or 'n'.\n");
     }
 }
 
-void nacitajRozmery(int *rowsA, int *colsA, int *colsB) {
-    *rowsA = nacitajKladneCislo("pocet riadkov matice A:");
-    *colsA = nacitajKladneCislo("pocet stlpcov matice A:");
-    *colsB = nacitajKladneCislo("pocet stlpcov matice B:");
+void readDimensions(int *rowsA, int *colsA, int *colsB) {
+    *rowsA = readPositiveInt("number of rows of matrix A:");
+    *colsA = readPositiveInt("number of columns of matrix A:");
+    *colsB = readPositiveInt("number of columns of matrix B:");
 }
 
-double **alokujMaticu(int riadky, int stlpce) {
-    double **matica = (double **)malloc(riadky * sizeof(double *));
-    if (matica == NULL) exit(1);
+double **allocMatrix(int rows, int cols) {
+    double **matrix = (double **)malloc(rows * sizeof(double *));
+    if (matrix == NULL) exit(1);
 
-    for (int i = 0; i < riadky; i++) {
-        matica[i] = (double *)malloc(stlpce * sizeof(double));
-        if (matica[i] == NULL) exit(1);
+    for (int i = 0; i < rows; i++) {
+        matrix[i] = (double *)malloc(cols * sizeof(double));
+        if (matrix[i] == NULL) exit(1);
     }
-    return matica;
+    return matrix;
 }
 
-void freeMaticu(double **matica, int riadky) {
-    for (int i = 0; i < riadky; i++) free(matica[i]);
-    free(matica);
+void freeMatrix(double **matrix, int rows) {
+    for (int i = 0; i < rows; i++) free(matrix[i]);
+    free(matrix);
 }
 
-void nacitajMaticu(double **matica, int riadky, int stlpce, char nazov) {
-    char vyzva[BUFFER_SIZE];
-    printf("\nnacitaj prvky matice %c (%d x %d):\n", nazov, riadky, stlpce);
+void readMatrix(double **matrix, int rows, int cols, char name) {
+    char prompt[BUFFER_SIZE];
+    printf("\nenter elements of matrix %c (%d x %d):\n", name, rows, cols);
 
-    for (int i = 0; i < riadky; i++)
-        for (int j = 0; j < stlpce; j++) {
-            snprintf(vyzva, sizeof(vyzva), "  matica %c[%d][%d] = ", nazov, i, j);
-            matica[i][j] = nacitajRealneCislo(vyzva);
+    for (int i = 0; i < rows; i++)
+        for (int j = 0; j < cols; j++) {
+            snprintf(prompt, sizeof(prompt), "  matrix %c[%d][%d] = ", name, i, j);
+            matrix[i][j] = readDouble(prompt);
         }
 }
 
-void nasobenieMatic(double **A, double **B, double **C, int rowsA, int colsA, int colsB) {
+void multiplyMatrices(double **A, double **B, double **C, int rowsA, int colsA, int colsB) {
     for (int i = 0; i < rowsA; i++)
         for (int j = 0; j < colsB; j++) {
             C[i][j] = 0.0;
@@ -242,139 +242,139 @@ void nasobenieMatic(double **A, double **B, double **C, int rowsA, int colsA, in
         }
 }
 
-void vypocitajSumyRiadkov(double **C, double *sumyRiadkov, int rowsA, int colsB) {
+void computeRowSums(double **C, double *rowSums, int rowsA, int colsB) {
     for (int i = 0; i < rowsA; i++) {
-        sumyRiadkov[i] = 0.0;
+        rowSums[i] = 0.0;
         for (int j = 0; j < colsB; j++)
-            sumyRiadkov[i] += C[i][j];
+            rowSums[i] += C[i][j];
     }
 }
 
-double najdiMaximalnuSumu(const double *sumyRiadkov, int rowsA) {
-    double maxSuma = sumyRiadkov[0];
+double findMaxSum(const double *rowSums, int rowsA) {
+    double maxSum = rowSums[0];
     for (int i = 1; i < rowsA; i++)
-        if (sumyRiadkov[i] > maxSuma) maxSuma = sumyRiadkov[i];
-    return maxSuma;
+        if (rowSums[i] > maxSum) maxSum = rowSums[i];
+    return maxSum;
 }
 
-void vypisSumyRiadkov(const double *sumyRiadkov, int rowsA) {
+void printRowSums(const double *rowSums, int rowsA) {
     for (int i = 0; i < rowsA; i++)
-        printf("  suma riadku %d = %.2f\n", i + 1, sumyRiadkov[i]);
+        printf("  row %d sum = %.2f\n", i + 1, rowSums[i]);
 }
 
-void vypisNajvacsieRiadky(const double *sumyRiadkov, int rowsA, double maxSuma) {
-    printf("\nriadok/riadky s najvacsou sumou (%.2f) su:\n", maxSuma);
+void printMaxRows(const double *rowSums, int rowsA, double maxSum) {
+    printf("\nrow(s) with maximum sum (%.2f):\n", maxSum);
     for (int i = 0; i < rowsA; i++)
-        if (fabs(sumyRiadkov[i] - maxSuma) < EPSILON)
-            printf("  -> riadok %d\n", i + 1);
+        if (fabs(rowSums[i] - maxSum) < EPSILON)
+            printf("  -> row %d\n", i + 1);
 }
 
-// nove funkcie po oprave
+// new functions after refactor
 
-void vypisMaticu(double **M, int riadky, int stlpce, char nazov) {
-    printf("\nvysledna matica %c (%d x %d):\n", nazov, riadky, stlpce);
-    for (int i = 0; i < riadky; i++) {
+void printMatrix(double **M, int rows, int cols, char name) {
+    printf("\nresult matrix %c (%d x %d):\n", name, rows, cols);
+    for (int i = 0; i < rows; i++) {
         printf("  [");
-        for (int j = 0; j < stlpce; j++)
+        for (int j = 0; j < cols; j++)
             printf(" %8.2f", M[i][j]);
         printf("  ]\n");
     }
 }
 
-void generujMaticu(double **matica, int riadky, int stlpce, char nazov) {
-    printf("\nmatica %c (%d x %d): prvky su automaticky vygenerovane\n", nazov, riadky, stlpce);
-    for (int i = 0; i < riadky; i++)
-        for (int j = 0; j < stlpce; j++)
-            matica[i][j] = (double)(rand() % 20001 - 10000) / 100.0;
+void generateMatrix(double **matrix, int rows, int cols, char name) {
+    printf("\nmatrix %c (%d x %d): values are randomly generated\n", name, rows, cols);
+    for (int i = 0; i < rows; i++)
+        for (int j = 0; j < cols; j++)
+            matrix[i][j] = (double)(rand() % 20001 - 10000) / 100.0;
 }
 
-int nacitajVolbuRezim(void) {
+int readModeChoice(void) {
     char buffer[BUFFER_SIZE];
 
     while (1) {
-        printf("=== Nasobenie matic ===\n");
-        printf("  1 - Normalny program       (rozmery aj prvky zadava pouzivatel)\n");
-        printf("  2 - Automaticke prvky      (pouzivatel zada rozmery, prvky sa dogeneruju)\n");
-        printf("  3 - Testovanie rychlosti   (automaticky benchmark casu a pamate)\n");
-        printf("volba: ");
+        printf("=== Matrix Multiplication ===\n");
+        printf("  1 - Manual       (user provides dimensions and values)\n");
+        printf("  2 - Auto         (user provides dimensions, values are generated)\n");
+        printf("  3 - Benchmark    (automated time and memory test)\n");
+        printf("choice: ");
         fflush(stdout);
 
         if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
-            printf("chyba pri nacitani vstupu!\n");
+            printf("input read error!\n");
             exit(1);
         }
 
-        odstranKoniecRiadka(buffer);
+        stripNewline(buffer);
 
         if (buffer[0] == '1' && (buffer[1] == '\0' || isspace((unsigned char)buffer[1]))) return 1;
         if (buffer[0] == '2' && (buffer[1] == '\0' || isspace((unsigned char)buffer[1]))) return 2;
         if (buffer[0] == '3' && (buffer[1] == '\0' || isspace((unsigned char)buffer[1]))) return 3;
 
-        printf("neplatna volba, zadaj 1, 2 alebo 3.\n\n");
+        printf("invalid choice, enter 1, 2 or 3.\n\n");
     }
 }
 
-int nacitajVolbuMetody(void) {
+int readMethodChoice(void) {
     char buffer[BUFFER_SIZE];
 
     while (1) {
-        printf("\nvyber metodu nasobenia matic:\n");
-        printf("  1 - standardny algoritmus O(n^3)     [vhodny pre male matice]\n");
-        printf("  2 - Strassenov algoritmus O(n^2.807) [efektivnejsi pre velke matice]\n");
-        printf("volba: ");
+        printf("\nselect multiplication method:\n");
+        printf("  1 - standard O(n^3)     [suitable for small matrices]\n");
+        printf("  2 - Strassen O(n^2.807) [more efficient for large matrices]\n");
+        printf("choice: ");
         fflush(stdout);
 
         if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
-            printf("chyba pri nacitani vstupu!\n");
+            printf("input read error!\n");
             exit(1);
         }
 
-        odstranKoniecRiadka(buffer);
+        stripNewline(buffer);
 
         if (buffer[0] == '1' && (buffer[1] == '\0' || isspace((unsigned char)buffer[1]))) return 1;
         if (buffer[0] == '2' && (buffer[1] == '\0' || isspace((unsigned char)buffer[1]))) return 2;
 
-        printf("neplatna volba, zadaj 1 alebo 2.\n");
+        printf("invalid choice, enter 1 or 2.\n");
     }
 }
 
-// implementacia strassenov algoritmus
+// Strassen algorithm implementation
 
-static int dalsiaPotenciu2(int n) {
+static int nextPowerOf2(int n) {
     int p = 1;
     while (p < n) p *= 2;
     return p;
 }
 
-static void addMatice(double **A, double **B, double **C, int n) {
+static void addMatrices(double **A, double **B, double **C, int n) {
     for (int i = 0; i < n; i++)
         for (int j = 0; j < n; j++)
             C[i][j] = A[i][j] + B[i][j];
 }
 
-static void odocitajMatice(double **A, double **B, double **C, int n) {
+static void subtractMatrices(double **A, double **B, double **C, int n) {
     for (int i = 0; i < n; i++)
         for (int j = 0; j < n; j++)
             C[i][j] = A[i][j] - B[i][j];
 }
 
-static void strassenRekurzivne(double **A, double **B, double **C, int n) {
+static void strassenRecursive(double **A, double **B, double **C, int n) {
     if (n <= STRASSEN_CUTOFF) {
-        nasobenieMatic(A, B, C, n, n, n);
+        multiplyMatrices(A, B, C, n, n, n);
         return;
     }
 
     int h = n / 2;
 
-    double **A11 = alokujMaticu(h, h), **A12 = alokujMaticu(h, h);
-    double **A21 = alokujMaticu(h, h), **A22 = alokujMaticu(h, h);
-    double **B11 = alokujMaticu(h, h), **B12 = alokujMaticu(h, h);
-    double **B21 = alokujMaticu(h, h), **B22 = alokujMaticu(h, h);
-    double **M1  = alokujMaticu(h, h), **M2  = alokujMaticu(h, h);
-    double **M3  = alokujMaticu(h, h), **M4  = alokujMaticu(h, h);
-    double **M5  = alokujMaticu(h, h), **M6  = alokujMaticu(h, h);
-    double **M7  = alokujMaticu(h, h);
-    double **T1  = alokujMaticu(h, h), **T2  = alokujMaticu(h, h);
+    double **A11 = allocMatrix(h, h), **A12 = allocMatrix(h, h);
+    double **A21 = allocMatrix(h, h), **A22 = allocMatrix(h, h);
+    double **B11 = allocMatrix(h, h), **B12 = allocMatrix(h, h);
+    double **B21 = allocMatrix(h, h), **B22 = allocMatrix(h, h);
+    double **M1  = allocMatrix(h, h), **M2  = allocMatrix(h, h);
+    double **M3  = allocMatrix(h, h), **M4  = allocMatrix(h, h);
+    double **M5  = allocMatrix(h, h), **M6  = allocMatrix(h, h);
+    double **M7  = allocMatrix(h, h);
+    double **T1  = allocMatrix(h, h), **T2  = allocMatrix(h, h);
 
     for (int i = 0; i < h; i++)
         for (int j = 0; j < h; j++) {
@@ -384,37 +384,37 @@ static void strassenRekurzivne(double **A, double **B, double **C, int n) {
             B21[i][j] = B[i+h][j];   B22[i][j] = B[i+h][j+h];
         }
 
-    addMatice(A11, A22, T1, h); addMatice(B11, B22, T2, h); strassenRekurzivne(T1, T2, M1, h); // M1
-    addMatice(A21, A22, T1, h);                              strassenRekurzivne(T1, B11, M2, h); // M2
-    odocitajMatice(B12, B22, T1, h);                         strassenRekurzivne(A11, T1, M3, h); // M3
-    odocitajMatice(B21, B11, T1, h);                         strassenRekurzivne(A22, T1, M4, h); // M4
-    addMatice(A11, A12, T1, h);                              strassenRekurzivne(T1, B22, M5, h); // M5
-    odocitajMatice(A21, A11, T1, h); addMatice(B11, B12, T2, h); strassenRekurzivne(T1, T2, M6, h); // M6
-    odocitajMatice(A12, A22, T1, h); addMatice(B21, B22, T2, h); strassenRekurzivne(T1, T2, M7, h); // M7
+    addMatrices(A11, A22, T1, h); addMatrices(B11, B22, T2, h); strassenRecursive(T1, T2, M1, h); // M1
+    addMatrices(A21, A22, T1, h);                                strassenRecursive(T1, B11, M2, h); // M2
+    subtractMatrices(B12, B22, T1, h);                           strassenRecursive(A11, T1, M3, h); // M3
+    subtractMatrices(B21, B11, T1, h);                           strassenRecursive(A22, T1, M4, h); // M4
+    addMatrices(A11, A12, T1, h);                                strassenRecursive(T1, B22, M5, h); // M5
+    subtractMatrices(A21, A11, T1, h); addMatrices(B11, B12, T2, h); strassenRecursive(T1, T2, M6, h); // M6
+    subtractMatrices(A12, A22, T1, h); addMatrices(B21, B22, T2, h); strassenRecursive(T1, T2, M7, h); // M7
 
     for (int i = 0; i < h; i++)
         for (int j = 0; j < h; j++) {
-            C[i][j]       = M1[i][j] + M4[i][j] - M5[i][j] + M7[i][j]; // C11
-            C[i][j+h]     = M3[i][j] + M5[i][j];                         // C12
-            C[i+h][j]     = M2[i][j] + M4[i][j];                         // C21
-            C[i+h][j+h]   = M1[i][j] - M2[i][j] + M3[i][j] + M6[i][j]; // C22
+            C[i][j]     = M1[i][j] + M4[i][j] - M5[i][j] + M7[i][j]; // C11
+            C[i][j+h]   = M3[i][j] + M5[i][j];                         // C12
+            C[i+h][j]   = M2[i][j] + M4[i][j];                         // C21
+            C[i+h][j+h] = M1[i][j] - M2[i][j] + M3[i][j] + M6[i][j]; // C22
         }
 
-    freeMaticu(A11,h); freeMaticu(A12,h); freeMaticu(A21,h); freeMaticu(A22,h);
-    freeMaticu(B11,h); freeMaticu(B12,h); freeMaticu(B21,h); freeMaticu(B22,h);
-    freeMaticu(M1,h);  freeMaticu(M2,h);  freeMaticu(M3,h);  freeMaticu(M4,h);
-    freeMaticu(M5,h);  freeMaticu(M6,h);  freeMaticu(M7,h);
-    freeMaticu(T1,h);  freeMaticu(T2,h);
+    freeMatrix(A11,h); freeMatrix(A12,h); freeMatrix(A21,h); freeMatrix(A22,h);
+    freeMatrix(B11,h); freeMatrix(B12,h); freeMatrix(B21,h); freeMatrix(B22,h);
+    freeMatrix(M1,h);  freeMatrix(M2,h);  freeMatrix(M3,h);  freeMatrix(M4,h);
+    freeMatrix(M5,h);  freeMatrix(M6,h);  freeMatrix(M7,h);
+    freeMatrix(T1,h);  freeMatrix(T2,h);
 }
 
-void nasobenieMaticStrassen(double **A, double **B, double **C, int rowsA, int colsA, int colsB) {
+void multiplyMatricesStrassen(double **A, double **B, double **C, int rowsA, int colsA, int colsB) {
     int maxDim = rowsA > colsA ? rowsA : colsA;
     maxDim = maxDim > colsB ? maxDim : colsB;
-    int n = dalsiaPotenciu2(maxDim);
+    int n = nextPowerOf2(maxDim);
 
-    double **Ap = alokujMaticu(n, n);
-    double **Bp = alokujMaticu(n, n);
-    double **Cp = alokujMaticu(n, n);
+    double **Ap = allocMatrix(n, n);
+    double **Bp = allocMatrix(n, n);
+    double **Cp = allocMatrix(n, n);
 
     for (int i = 0; i < n; i++)
         for (int j = 0; j < n; j++) {
@@ -431,33 +431,33 @@ void nasobenieMaticStrassen(double **A, double **B, double **C, int rowsA, int c
         for (int j = 0; j < colsB; j++)
             Bp[i][j] = B[i][j];
 
-    strassenRekurzivne(Ap, Bp, Cp, n);
+    strassenRecursive(Ap, Bp, Cp, n);
 
     for (int i = 0; i < rowsA; i++)
         for (int j = 0; j < colsB; j++)
             C[i][j] = Cp[i][j];
 
-    freeMaticu(Ap, n);
-    freeMaticu(Bp, n);
-    freeMaticu(Cp, n);
+    freeMatrix(Ap, n);
+    freeMatrix(Bp, n);
+    freeMatrix(Cp, n);
 }
 
-// testovanie
+// benchmarking
 
-static long pamatStandard_KB(int rA, int cA, int cB) {
+static long memoryStandardKB(int rA, int cA, int cB) {
     long bytes = (long)(rA * cA + cA * cB + rA * cB) * (long)sizeof(double);
     return bytes / 1024;
 }
 
-static long pamatStrassen_KB(int rA, int cA, int cB) {
+static long memoryStrassenKB(int rA, int cA, int cB) {
     int maxDim = rA > cA ? rA : cA;
     maxDim = maxDim > cB ? maxDim : cB;
-    int n = dalsiaPotenciu2(maxDim);
+    int n = nextPowerOf2(maxDim);
     long bytes = 3L * n * n * (long)sizeof(double);
     return bytes / 1024;
 }
 
-void spustiTestovanie(void) {
+void runBenchmark(void) {
     struct { int r, c1, c2; const char *label; } cases[] = {
         {  50,  50,  50,  "50x50x50"      },
         { 200, 200, 200,  "200x200x200"   },
@@ -469,7 +469,7 @@ void spustiTestovanie(void) {
     int numCases = (int)(sizeof(cases) / sizeof(cases[0]));
 
     printf("\n");
-    printf("%-16s  %-10s  %12s  %12s\n", "Rozmer", "Sposob", "Cas (s)", "Pamat (KB)");
+    printf("%-16s  %-10s  %12s  %12s\n", "Size", "Method", "Time (s)", "Memory (KB)");
     printf("%-16s  %-10s  %12s  %12s\n", "----------------", "----------", "------------", "------------");
 
     srand(42);
@@ -477,8 +477,8 @@ void spustiTestovanie(void) {
     for (int i = 0; i < numCases; i++) {
         int rA = cases[i].r, cA = cases[i].c1, cB = cases[i].c2;
 
-        double **A = alokujMaticu(rA, cA);
-        double **B = alokujMaticu(cA, cB);
+        double **A = allocMatrix(rA, cA);
+        double **B = allocMatrix(cA, cB);
 
         for (int ii = 0; ii < rA; ii++)
             for (int jj = 0; jj < cA; jj++)
@@ -488,32 +488,32 @@ void spustiTestovanie(void) {
                 B[ii][jj] = (double)(rand() % 2001 - 1000) / 10.0;
 
         for (int method = 1; method <= 2; method++) {
-            double **C = alokujMaticu(rA, cB);
+            double **C = allocMatrix(rA, cB);
 
             struct timespec t1, t2;
             clock_gettime(CLOCK_MONOTONIC, &t1);
 
             if (method == 1)
-                nasobenieMatic(A, B, C, rA, cA, cB);
+                multiplyMatrices(A, B, C, rA, cA, cB);
             else
-                nasobenieMaticStrassen(A, B, C, rA, cA, cB);
+                multiplyMatricesStrassen(A, B, C, rA, cA, cB);
 
             clock_gettime(CLOCK_MONOTONIC, &t2);
 
             double elapsed = (double)(t2.tv_sec  - t1.tv_sec)
                            + (double)(t2.tv_nsec - t1.tv_nsec) * 1e-9;
 
-            long mem = (method == 1) ? pamatStandard_KB(rA, cA, cB)
-                                     : pamatStrassen_KB(rA, cA, cB);
+            long mem = (method == 1) ? memoryStandardKB(rA, cA, cB)
+                                     : memoryStrassenKB(rA, cA, cB);
 
-            const char *nazovMetody = (method == 1) ? "standard" : "strassen";
-            printf("%-16s  %-10s  %12.6f  %12ld\n", cases[i].label, nazovMetody, elapsed, mem);
+            const char *methodName = (method == 1) ? "standard" : "strassen";
+            printf("%-16s  %-10s  %12.6f  %12ld\n", cases[i].label, methodName, elapsed, mem);
 
-            freeMaticu(C, rA);
+            freeMatrix(C, rA);
         }
 
-        freeMaticu(A, rA);
-        freeMaticu(B, cA);
+        freeMatrix(A, rA);
+        freeMatrix(B, cA);
         printf("\n");
     }
 }
